@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Стриминг-Аватар</title>
+</head>
+<body>
+    <h1>Здравствуй, мир!</h1>
+    <button id="start-record-btn">Нажмите и говорите</button>
+    <p id="status"></p>
+    <script>
+        // Web Speech API
+        const startRecordBtn = document.getElementById('start-record-btn');
+        const status = document.getElementById('status');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU'; // Устанавливаем язык на русский
+
+        recognition.onstart = function() {
+            status.textContent = 'Говорите...';
+        };
+
+        recognition.onspeechend = function() {
+            status.textContent = 'Обработка...';
+            recognition.stop();
+        };
+
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            status.textContent = `Вы сказали: ${transcript}`;
+            // Отправка текста на сервер HeyGen
+            sendTextToHeyGen(transcript);
+        };
+
+        startRecordBtn.addEventListener('click', () => {
+            recognition.start();
+        });
+
+        // Функция отправки текста на сервер HeyGen и получения ответа
+        function sendTextToHeyGen(text) {
+            const messageEvent = new CustomEvent('message', {
+                detail: {
+                    data: text
+                }
+            });
+            window.dispatchEvent(messageEvent);
+
+            fetch('https://api.heygen.com/v2/your-endpoint', { // Замените на правильный эндпоинт
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer N2RjZGYxNGU5M2Q4NDdkM2FkZmNhODAwMWQ4MDkyNGItMTcxODYzNTMyMw==' // Ваш API ключ
+                },
+                body: JSON.stringify({
+                    "input": {
+                        "text": text,
+                        "voice": "Anna_public_3_20240108" // Используем ваш ID аватара
+                    }
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.response) {
+                    playAudio(data.response.audio_url); // Воспроизведение аудио с ответом
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+            });
+        }
+
+        // Функция воспроизведения аудио
+        function playAudio(url) {
+            const audio = new Audio(url);
+            audio.play();
+        }
+
+        // Инициализация стриминг-аватара
+        !function(window){
+            const host="https://app.heygen.com",
+            url=host+"/guest/streaming-embed?share=eyJxdWFsaXR5IjoiaGlnaCIsImF2YXRhck5hbWUiOiJUeWxlci1pbmNhc3VhbHN1aXQtMjAyMjA3%0D%0AMjEiLCJ2b2ljZSI6eyJ2b2ljZV9pZCI6ImNjZjA1MDgyMTk4MjQwZjE4MDUzZTU3YWMxZGMyYjVj%0D%0AIn0sInByZXZpZXdJbWciOiJodHRwczovL2ZpbGVzLmhleWdlbi5haS9hdmF0YXIvdjMvNzliMjQ1%0D%0ANTYxYWQ0NDhlNzk2YjdlNzdjZDI3NzNkMGJfMTQyNjMvcHJldmlld190YWxrXzExLndlYnAiLCJu%0D%0AZWVkUmVtb3ZlQmFja2dyb3VuZCI6dHJ1ZSwidXNlcm5hbWUiOiI5M2Y3MGY5NjI0ZDg0YTdlYjQw%0D%0ANDIwMTUwNDYxMzExNCJ9&inIFrame=1",
+            clientWidth=document.body.clientWidth,
+            wrapDiv=document.createElement("div");
+            wrapDiv.id="heygen-streaming-embed";
+            const container=document.createElement("div");
+            container.id="heygen-streaming-container";
+            const stylesheet=document.createElement("style");
+            stylesheet.innerHTML=`
+                #heygen-streaming-embed {
+                    z-index: 9999;
+                    position: fixed;
+                    left: 40px;
+                    bottom: 40px;
+                    width: 200px;
+                    height: 200px;
+                    border-radius: 50%;
+                    border: 2px solid #fff;
+                    box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.12);
+                    transition: all linear 0.1s;
+                    overflow: hidden;
+                    opacity: 0;
+                    visibility: hidden;
+                }
+                #heygen-streaming-embed.show {
+                    opacity: 1;
+                    visibility: visible;
+                }
+                #heygen-streaming-embed.expand {
+                    ${clientWidth<540?"height: 266px; width: 96%; left: 50%; transform: translateX(-50%);":"height: 366px; width: calc(366px * 16 / 9);"}
+                    border: 0;
+                    border-radius: 8px;
+                }
+                #heygen-streaming-container {
+                    width: 100%;
+                    height: 100%;
+                }
+                #heygen-streaming-container iframe {
+                    width: 100%;
+                    height: 100%;
+                    border: 0;
+                }
+            `;
+            const iframe=document.createElement("iframe");
+            iframe.allowFullscreen=!1,
+            iframe.title="Streaming Embed",
+            iframe.role="dialog",
+            iframe.src=url;
+            let visible=!1,initial=!1;
+            window.addEventListener("message",(e=>{
+                e.origin===host&&e.data&&e.data.type&&"streaming-embed"===e.data.type&&("init"===e.data.action?(initial=!0,wrapDiv.classList.toggle("show",initial)):"show"===e.data.action?(visible=!0,wrapDiv.classList.toggle("expand",visible)):"hide"===e.data.action&&(visible=!1,wrapDiv.classList.toggle("expand",visible)))})),
+            container.appendChild(iframe),
+            wrapDiv.appendChild(stylesheet),
+            wrapDiv.appendChild(container),
+            document.body.appendChild(wrapDiv)
+        }(globalThis);
+    </script>
+</body>
+</html>
